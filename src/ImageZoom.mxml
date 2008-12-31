@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Canvas 
+	xmlns="http://www.adobe.com/2006/mxml"
+	xmlns:flash.filters="flash.filters.*" 
+	creationComplete="onCreationComplete()"
+	horizontalScrollPolicy="off" verticalScrollPolicy="off"
+	mouseWheel="onMouseWheel(event)">
+	
+	<Script>
+		<![CDATA[
+			import mx.utils.Base64Encoder;
+			import mx.core.Application;
+			
+			public static const EVENT_SCALE_UPDATED : String = "scaleUpdated";
+			
+			[Bindable]
+			public var zoomDuration : Number = 500;
+			[Bindable]
+			public var zoomEasingFunction : Function = null;
+			
+			[Bindable]
+			public var moveDuration : Number = 500;
+			[Bindable]
+			public var moveEasingFunction : Function = null;
+			
+			[Bindable]
+			public var fadeDuration : Number = 500;
+			[Bindable]
+			public var fadeEasingFunction : Function = null;
+			
+			private	var borderBuffer : Number = 50;
+			private var minScale : Number = .02;
+			private var isAnimating : Boolean = false;
+			public var zoomIncrement : Number = .35;
+			public var mouseWheelEnabled : Boolean = true;
+			public var mouseFollow : Boolean = true;
+			public var imageDoubleClickEnabled : Boolean = true;
+			
+			[Bindable]
+			private var _source : Object = null;
+			
+			private function onCreationComplete() : void 
+			{
+				Application.application.addEventListener( MouseEvent.MOUSE_UP, onApplicationMouseUp );
+			}
+
+			private function onApplicationMouseUp( event : MouseEvent ) : void 
+			{
+				image.stopDrag();
+			}
+			
+			private function onMouseWheel( event : MouseEvent ) : void 
+			{
+				if ( mouseWheelEnabled )
+					eventZoom( event.delta );
+			}
+			
+			private function onDoubleClick() : void 
+			{
+				if ( imageDoubleClickEnabled )
+					eventZoom( 3 );
+			}
+			
+			private function eventZoom( increment : Number ) : void 
+			{
+				if ( image.percentLoaded >= 100 )
+				{
+					if( mouseFollow )
+					{
+						zoomEffect.originX = image.mouseX;
+						zoomEffect.originY = image.mouseY;
+						
+					}
+					else
+					{
+						setDefaultRegistrationPoint();
+					}
+					zoom( image.scaleX + increment * zoomIncrement );
+				}
+			}
+			
+			private function setDefaultRegistrationPoint() : void 
+			{
+				zoomEffect.originX = image.width/2;
+				zoomEffect.originY = image.height/2;
+			}
+			
+			public function reset() : void
+			{
+				moveEffect.xTo = (this.width - image.contentWidth)/2;
+				moveEffect.yTo = (this.height - image.contentHeight)/2;
+				moveEffect.play();
+				zoom( 1 );
+				this.dispatchEvent( new Event( EVENT_SCALE_UPDATED ) );
+			}
+			
+			public function zoomIn() : void 
+			{
+				setDefaultRegistrationPoint();
+				zoom( zoomEffect.zoomHeightTo + zoomIncrement );
+			}
+			
+			public function zoomOut() : void 
+			{
+				setDefaultRegistrationPoint()
+				zoom( zoomEffect.zoomHeightTo - zoomIncrement );
+			}
+			
+			public function zoom( factor : Number ) : void
+			{
+				if ( !isAnimating )
+				{
+					isAnimating = true;
+					if ( zoomEffect.isPlaying )
+					{
+						zoomEffect.end();
+					}
+					
+					zoomEffect.zoomHeightTo = Math.max(factor, minScale);
+					zoomEffect.zoomWidthTo = Math.max(factor, minScale);
+					
+					zoomEffect.play();
+					this.dispatchEvent( new Event( EVENT_SCALE_UPDATED ) );
+				}
+			}
+			
+			public function recenterImage() : void
+			{
+				image.x = (this.width - image.contentWidth)/2;
+				image.y = (this.height - image.contentHeight)/2;
+			}
+			
+			private function onEffectEnd() : void 
+			{
+				isAnimating = false;
+				if( image.x > this.width - borderBuffer )
+				{
+					image.x = this.width-borderBuffer;
+				}
+				else if( image.x < borderBuffer-image.width )
+				{
+					image.x = borderBuffer-image.width;
+				}
+				
+				if( image.y > this.height - borderBuffer )
+				{
+					image.y = this.height-borderBuffer;
+				}
+				else if( image.y < borderBuffer-image.height )
+				{
+					image.y = borderBuffer-image.height;
+				} 
+			}
+			
+			private function imageComplete() : void
+			{
+				this.dispatchEvent( new Event( EVENT_SCALE_UPDATED ) );
+				recenterImage();
+			}
+			
+			public function set source( value : Object ) : void
+			{
+				if(value != null && value != _source)
+				{
+					image.scaleX = 1;
+					image.scaleY = 1;
+					image.x = 0;
+					image.y = 0;
+					_source = value;
+					this.dispatchEvent( new Event( EVENT_SCALE_UPDATED ) );
+				}	
+			}
+			
+			public function get source() : Object
+			{
+				return _source;
+			}
+			
+			[Bindable(event="scaleUpdated")]
+			public function get scale() : Number
+			{
+				return zoomEffect.zoomHeightTo;
+			}
+			
+			public function get content() : DisplayObject
+			{
+				return image.content;
+			}
+		]]>
+	</Script>
+	
+	<Zoom id="zoomEffect" duration="{ zoomDuration }" target="{ image }" 
+		zoomHeightTo="1" zoomWidthTo="1" effectEnd="onEffectEnd()" easingFunction="{ zoomEasingFunction }"   />
+	<Move id="moveEffect" duration="{ moveDuration }" target="{ image }" easingFunction="{ moveEasingFunction }" />
+	<Fade id="fadeInEffect" duration="{ fadeDuration }" alphaTo="1" easingFunction="{ fadeEasingFunction }" />
+	
+	<Canvas id="maskCanvas" backgroundColor="#FF0000" width="100%" height="100%" />
+	
+	<Canvas
+		visible="{ _source != null &amp;&amp; image.percentLoaded &lt; 100 }" horizontalCenter="0" verticalCenter="0" 
+		hideEffect="WipeDown" showEffect="WipeDown" width="210" height="30"
+		borderStyle="solid" borderThickness="3" borderColor="#000000" backgroundColor="#FFFFFF" backgroundAlpha=".5" cornerRadius="10" >
+		
+		<Label text="Loading... { Math.floor(image.percentLoaded) }%" fontSize="16" width="100%" textAlign="center">
+			<filters>
+				<flash.filters:DropShadowFilter color="0" alpha=".5" />
+			</filters>
+		</Label>
+		
+	</Canvas>
+	
+	
+	<Image id="image" mask="{ maskCanvas }" source="{ _source }" mouseDown="image.startDrag()" visible="{ _source != null &amp;&amp; image.percentLoaded == 100 }"
+		showEffect="{ fadeInEffect }" complete="imageComplete()" doubleClickEnabled="true" doubleClick="onDoubleClick()" />
+	
+</Canvas>

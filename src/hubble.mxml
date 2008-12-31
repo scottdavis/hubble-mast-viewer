@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:WindowedApplication xmlns:mx="http://www.adobe.com/2006/mxml" layout="absolute" xmlns:ns1="*" width="1400" height="950" backgroundGradientAlphas="[1.0, 1.0]" backgroundGradientColors="[#030101, #030101]">
+<mx:HTTPService id='mastService' />
+<mx:Script>
+	<![CDATA[
+	
+		 [Embed(source="assets/logo.png")]
+            [Bindable]
+
+            public var Logo:Class;
+	
+		import mx.events.EffectEvent;
+		import mx.collections.ArrayCollection;
+		import mx.rpc.events.FaultEvent;
+		import mx.rpc.events.ResultEvent;
+		import mx.controls.Alert;
+		public var mastUrl:String = 'http://archive.stsci.edu/hst/search.php';
+		public var mastQueryString:String = '?max_records=100&outputformat=VOTable&action=Search&sci_instrume=WFPC2';
+		public var dataArray:ArrayCollection = new ArrayCollection;
+	
+		public var dataLoader:String = "http://archive.stsci.edu/hst/search.php?target=ngc1068&radius=3.0&image[]=ACS&spectrum[]=ACS&outputformat=VOTable&action=Search&coordformat=dec&sci_aec[]=S";
+		public var urlString:String = "http://archive.stsci.edu/cgi-bin/hst_preview_search";
+		public var queryString:String = '?imfmt=gif';
+		public var defaultColorTransform:ColorTransform = new ColorTransform;
+		public var isAnimating:Boolean = false;
+		public var minScale:Number = .02;
+		public function loadImage() :void {
+			my_image.visible = true;
+			var thisUrl:String = urlString + queryString + '&name=' + dataGrid.selectedItem.dataset
+			trace(thisUrl);
+			trace('loading image');
+			my_image.source = thisUrl;
+			my_image.image.scaleContent = true;
+			my_image.image.load(thisUrl);
+			my_image.image.addEventListener(HTTPStatusEvent.HTTP_STATUS, handleImageEvent);
+			my_image.image.addEventListener(IOErrorEvent.IO_ERROR, imageIoError);
+			my_image.image.addEventListener(Event.COMPLETE, function(e:Event):void{image_adjustments.visible = true;})
+			defaultColorTransform = my_image.image.transform.colorTransform;
+			image_panel.title = "Viewing " + dataGrid.selectedItem.dataset;
+		}
+		
+		private function imageIoError(event:IOErrorEvent) :void {
+			my_image.visible = false;
+			image_panel.title = "No Image found";
+		}
+		
+		private function handleImageEvent(event:HTTPStatusEvent) :void {
+			trace(event.status)
+		}
+		
+		public function zoomIn(event:MouseEvent) :void {
+			trace(event.localX);
+			trace(event.localY);
+			
+		}
+		
+		public function loadSearch() :void{
+			var url:String = mastUrl + mastQueryString + '&target=' + target_search_box.text;
+			mastService.url = url
+			trace(url);
+			mastService.resultFormat = 'text';
+			mastService.addEventListener(ResultEvent.RESULT, onMastResult);
+			mastService.addEventListener(FaultEvent.FAULT, function(e:FaultEvent):void{trace('fault');trace(e.message);});
+			loading_bar.visible = true;
+			loading_bar.indeterminate = true;
+			mastService.send();
+		}
+		
+		public function onMastResult(event:ResultEvent) :void {
+			//var result:String = event.result.toString().toLowerCase();
+			//trace(result);
+			var s:String = event.result as String;
+			//trace(s.toLowerCase());
+			var xml:XMLDocument = new XMLDocument(s.toLowerCase());
+			var e4x:XML = new XML(xml);
+			trace(e4x.resource.table.data.tabledata.tr);
+			var tableData:XML = e4x.resource.table.data.tabledata as XML; 
+			dataArray.removeAll();
+			for each(var tr:XML in e4x.resource.table.data.tabledata.tr) {
+				trace(tr);
+				trace(tr.td[0]);
+				var dataSet:Object = tr.td[0];
+				var target:Object = tr.td[1];
+				var ra:Object = tr.td[2];
+				var dec:Object = tr.td[3];
+				dataArray.addItem({'dataset':dataSet.toString(), 'target':target.toString(), 'ra':ra.toString(), 'dec':dec.toString(), 'aperture':tr.td[9].toString()});
+			}
+			dataGrid.dataProvider = dataArray;
+			loading_bar.indeterminate = true;
+			loading_bar.visible = false;
+		}
+		
+		public function onMatrixFilter() :void {
+			my_image.image.filters = [getContrast(contrast_slider.value), getBrightness(brightness_slider.value), getSaturation(saturation_slider.value)];
+		}
+		
+		
+		public function getContrast(value:Number) :ColorMatrixFilter {
+			var a:Number = value * 11;
+			var b:Number = 63.5 - (value * 698.5);
+			var my_transform:ColorTransform = my_image.image.transform.colorTransform;
+			my_transform.redMultiplier = my_transform.greenMultiplier = my_transform.blueMultiplier = a;
+			my_transform.redOffset = my_transform.greenOffset = my_transform.blueOffset = b;
+			var cmf:ColorMatrixFilter = new ColorMatrixFilter([a, 0, 0, 0, b, 0, a, 0, 0, b, 0, 0, a, 0, b, 0, 0, 0, 1, 0]);
+			return cmf
+		}
+		
+		public function getSaturation(value:Number) :ColorMatrixFilter {
+			value = value * 10;
+			var red:Number = 0.3086; // luminance contrast value for red
+			var green:Number = 0.694; // luminance contrast value for green
+			var blue:Number = 0.0820; // luminance contrast value for blue
+			var a:Number = (1-value) * red + value;
+			var b:Number = (1-value) * green;
+			var c:Number = (1-value) * blue;
+			var d:Number = (1-value) * red;
+			var e:Number = (1-value) * green + value;
+			var f:Number = (1-value) * blue;
+			var g:Number = (1-value) * red ;
+			var h:Number = (1-value) * green;
+			var i:Number = (1-value) * blue + value;
+			var cmf:ColorMatrixFilter = new ColorMatrixFilter([a, b, c, 0, 0, d, e, f, 0, 0, g, h, i, 0 ,0, 0, 0, 0, 1, 0]);
+			return cmf;
+		}
+		
+		public function setContrast() :void {
+			var value:Number = contrast_slider.value;
+			
+			var cmf:ColorMatrixFilter = getContrast(value);
+			my_image.image.filters = [cmf, getBrightness(brightness_slider.value)]
+		}
+		
+		
+		public function getBrightness(value:Number) :ColorMatrixFilter {
+			var matrix:Array = new Array();
+			matrix = matrix.concat([1, 0, 0, 0, value * 100]); // red
+			matrix = matrix.concat([0, 1, 0, 0, value * 100 ]); // green
+			matrix = matrix.concat([0, 0, 1, 0, value * 100]); // blue
+			matrix = matrix.concat([0, 0, 0, 1, 0]); 	// alpha
+			var cmf:ColorMatrixFilter = new ColorMatrixFilter(matrix); 
+			return cmf
+		}
+		
+		
+		public function setBrightness() :void {
+			var value:Number = brightness_slider.value;
+			var cmf:ColorMatrixFilter = getBrightness(value);
+			my_image.image.filters = [cmf, getContrast(contrast_slider.value)];
+		}
+		
+		
+		public function onSlide() :void {
+			trace('sliding');
+			var color:ColorTransform = new ColorTransform(red.value, green.value, blue.value);
+			my_image.image.transform.colorTransform = color;
+			
+		}
+		
+		private function resetColor() :void {
+			my_image.image.transform.colorTransform = defaultColorTransform;
+			red.value = 1;
+			green.value = 1;
+			blue.value = 1;
+			contrast_slider.value = .08;
+			brightness_slider.value = 0;
+			saturation_slider.value = 0;
+			onMatrixFilter()
+		}
+
+	]]>
+</mx:Script>
+		<mx:Panel x="10" y="16" width="820" height="840" title="Image" id='image_panel' horizontalScrollPolicy="off" verticalScrollPolicy="off">
+		<ns1:ImageZoom id="my_image"             
+			fadeDuration="1000"
+			width="800"
+			height="800" 
+            bottom="0" left="0" top="0" right="0"
+            zoomIncrement=".5"
+            imageDoubleClickEnabled="true"
+            mouseWheelEnabled="true" toolTip="Double Click to Zoom" 
+            />	
+		</mx:Panel>
+		<mx:Button x="875" y="592" label="Reset Zoom" id="reset_zoome" click="my_image.reset()"/>
+		<mx:DataGrid x="1020" y="114" id="dataGrid" doubleClickEnabled="true" doubleClick="loadImage()" width="368" height="789" toolTip="Double Click to Load Image">
+				<mx:columns>
+						<mx:DataGridColumn headerText="Dataset" dataField="dataset"/>
+						<mx:DataGridColumn headerText="Target" dataField="target"/>
+						<mx:DataGridColumn headerText="RA" dataField="ra"/>
+						<mx:DataGridColumn headerText="DEC" dataField="dec"/>
+						<mx:DataGridColumn headerText="Apertures" dataField="aperture" />
+				</mx:columns>
+		</mx:DataGrid>
+		<mx:TextInput x="1120" y="32" text="m8" id="target_search_box" enter="loadSearch()"/>
+		<mx:Label x="1118" y="10" text="Messier Object Search" color="#FFFFFF" fontWeight="bold" fontSize="13"/>
+		<mx:Button x="1150" y="62" label="MAST search" click="loadSearch()"/>
+		<mx:Panel width="174" height="540" layout="absolute" x="838" y="16" title="Image Adjustments" id="image_adjustments" visible="false">
+				<mx:VSlider toolTip="Brightness"  x="95" y="52" id="brightness_slider" allowTrackClick="true" liveDragging="true" minimum="0" maximum="1" snapInterval=".001" change="onMatrixFilter()"/>
+				<mx:VSlider styleName="red" toolTip="Red" x="36" y="272" value="1" allowTrackClick="true" snapInterval=".001" liveDragging="true" minimum="0" maximum="1" id="red" change="onSlide()"/>
+				<mx:VSlider styleName="green" toolTip="Green" x="71" y="272" value="1" allowTrackClick="true" snapInterval=".001" liveDragging="true" minimum="0" maximum="1" id="green" change="onSlide()"/>
+				<mx:VSlider styleName="blue" toolTip="Blue" x="101" y="272" value="1" allowTrackClick="true" snapInterval=".001" liveDragging="true" minimum="0" maximum="1" id="blue" change="onSlide()"/>
+				<mx:Button x="34" y="456" label="Reset Color" id="reset_color" click="resetColor();" color="#000000" styleName="color_reset"/>
+				<mx:Label x="33" y="246" text="Red"/>
+				<mx:Label x="61" y="246" text="Green"/>
+				<mx:Label x="101" y="246" text="Blue"/>
+				<mx:Label x="95" y="26" text="Bright."/>
+				<mx:VSlider toolTip="Contrast" x="57" y="52" id="contrast_slider" value=".08" allowTrackClick="true" minimum="0" maximum="1" snapInterval=".001" enabled="true" change="onMatrixFilter()" liveDragging="true"/>
+				<mx:Label x="57" y="26" text="Cont."/>
+				<mx:VSlider toolTip="Saturation" x="32" y="52" minimum="0" maximum="1" snapInterval=".001" enabled="true" liveDragging="true" change="onMatrixFilter()" id="saturation_slider" allowTrackClick="true"/>
+				<mx:Label x="32" y="26" text="Sat."/>
+		</mx:Panel>
+		<mx:Style source="styles.css"/>
+		<mx:ProgressBar x="1056" y="90" width="297" id="loading_bar" labelPlacement="center" minimum="0" maximum="100" visible="false"  indeterminate="true"/>
+		<mx:Image x="839" y="668" source="{Logo}"/>
+
+
+	
+</mx:WindowedApplication>

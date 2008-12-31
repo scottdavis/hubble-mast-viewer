@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<application xmlns="http://ns.adobe.com/air/application/1.1">
+
+<!-- Adobe AIR Application Descriptor File Template.
+
+	Specifies parameters for identifying, installing, and launching AIR applications.
+
+	xmlns - The Adobe AIR namespace: http://ns.adobe.com/air/application/1.1
+			The last segment of the namespace specifies the version 
+			of the AIR runtime required for this application to run.
+			
+	minimumPatchLevel - The minimum patch level of the AIR runtime required to run 
+			the application. Optional.
+-->
+
+	<!-- The application identifier string, unique to this application. Required. -->
+	<id>hubble</id>
+
+	<!-- Used as the filename for the application. Required. -->
+	<filename>hubble</filename>
+
+	<!-- The name that is displayed in the AIR application installer. 
+	     May have multiple values for each language. See samples or xsd schema file. Optional. -->
+	<name>hubble</name>
+
+	<!-- An application version designator (such as "v1", "2.5", or "Alpha 1"). Required. -->
+	<version>v1</version>
+
+	<!-- Description, displayed in the AIR application installer.
+	     May have multiple values for each language. See samples or xsd schema file. Optional. -->
+	<description>Searches the MAST database and loads in data from the space telescopes</description>
+
+	<!-- Copyright information. Optional -->
+	<!-- <copyright></copyright> -->
+
+	<!-- Settings for the application's initial window. Required. -->
+	<initialWindow>
+		<!-- The main SWF or HTML file of the application. Required. -->
+		<!-- Note: In Flex Builder, the SWF reference is set automatically. -->
+		<content>hubble.swf</content>
+		
+		<!-- The title of the main window. Optional. -->
+		<title>MAST Database Viewer</title>
+		
+
+		<!-- The window's initial width. Optional. -->
+		<width>1100</width>
+
+		<!-- The window's initial height. Optional. -->
+		<height>950</height>
+
+		<!-- The window's initial x position. Optional. -->
+		<x>0</x>
+
+		<!-- The window's initial y position. Optional. -->
+		<y>0</y>
+
+
+	</initialWindow>
+	
+	<icon>
+		<image128x128>assets/hubble.png</image128x128>
+	</icon>
+
+
+</application>

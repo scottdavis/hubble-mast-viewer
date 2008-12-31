@@ -1,0 +1,41 @@
+/* CSS file */
+
+DataGrid
+{
+	alternatingItemColors: #F4E7E7, #FFFFFF;
+	themeColor: #0066A7;
+	verticalScrollBarStyleName: dataGridVerticalScrollBar;
+}
+.dataGridVerticalScrollBar
+{
+}
+VSlider.blue
+{
+	fillAlphas: 1.0, 1.0;
+	fillColors: #2909CC, #2909CC;
+}
+VSlider.green
+{
+	fillAlphas: 1.0, 1.0, 1.0, 1.0;
+	fillColors: #237D07, #237D07, #237D07, #237D07;
+}
+VSlider.red
+{
+	fillAlphas: 1.0, 1.0, 1.0, 1.0;
+	fillColors: #E75959, #E75959, #E75959, #FF0000;
+}
+Button
+{
+	fillAlphas: 1.0, 1.0;
+	fillColors: #E9E5E5, #E9E5E5;
+	color: #000000;
+}
+Panel
+{
+	color: #BFC1C1;
+}
+
+Label
+{
+	color: #000000;
+}
